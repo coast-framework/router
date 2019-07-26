@@ -1,5 +1,5 @@
 # router
-Yet another clojure ring router
+Easy clojure routing
 
 ## Installation
 
