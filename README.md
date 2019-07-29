@@ -25,7 +25,7 @@ Use it like this
 (def routes (router/routes
               [:get "/" ::index]
               [:post "/" ::post]
-              [:get "/accounts/:id"]))
+              [:get "/accounts/:id" ::account]))
 
 (defn index [request]
   {:status 200
