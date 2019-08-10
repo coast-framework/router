@@ -48,7 +48,7 @@ Use it like this
     [:get "/accounts/:id" account :account]))
 ```
 
-## Middleware
+### Middleware
 
 The router supports per-route ring middleware
 
@@ -69,7 +69,7 @@ The router supports per-route ring middleware
       [:get "/accounts/:id" account])))
 ```
 
-## Combining Handlers
+### Combining Handlers
 
 In some cases it might make more sense to keep separate apps separate and combine them later
 instead of defining middleware functions across route vectors.
@@ -136,6 +136,63 @@ returns a ring response map with the `"Location"` header set
 ```clojure
 (router/redirect-to :account/show {:id 1}) ; => {:status 302 :body "" :headers {"Location" "/accounts/1"}}
 (router/redirect-to :index) ; =>  ; => {:status 302 :body "" :headers {"Location" "/"}}
+```
+
+## Routes
+
+A route is a vector that must have three items, and an optional name
+
+```clojure
+(defn index [request])
+
+[:get "/" index] ; this is a a valid route
+```
+
+The first item in a route is the request method, which can be one of the following:
+
+- `:get`
+- `:post`
+- `:put`
+- `:patch`
+- `:delete`
+- `:head`
+- `:connect`
+- `:trace`
+
+The next item is the url with any parameters you define:
+
+```clojure
+"/" ; => responds to localhost/ or localhost
+
+"/accounts/:id" ; => responds to localhost/accounts/1 or localhost/accounts/whatever
+
+"/accounts/:id/todos" ; => responds to localhost/accounts/1/todos
+```
+
+The last required item is the function that will respond to the request.
+This function takes one argument, the [ring](https://github.com/ring-clojure/ring) request map:
+
+```clojure
+(defn home [request]
+  {:status 200
+   :body "home"
+   :headers {"content-type" "text/plain"}})
+```
+
+The final, optional item is a name for `url-for` and `action-for` helpers
+
+```clojure
+(defn hello [request]
+  {:status 200
+   :body (str "hello " (get-in request [:params :name]))
+   :headers {"content-type" "text/plain"}})
+
+[:get ; request-method
+ "/hello/:name" ; url
+ hello ; handler function
+ :hello-route] ; optional route name
+
+(router/url-for :hello-route {:name "sean"}) ; => "/hello/sean"
 ```
 
 ## Testing
