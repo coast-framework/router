@@ -7,7 +7,7 @@ Add this lib to your `deps.edn`
 
 ```clojure
 {:deps {coast-framework/router {:git/url "https://github.com/coast-framework/router"
-                                :sha "29d1108775eb3ab7fe7ba4eb60325d5090dcdae4"}}}
+                                :sha "8ee0d55ed2240a0bfe2efe854cfdaedb6eb6e6bb"}}}
 ```
 
 ## Usage
