@@ -1,5 +1,10 @@
 (ns router.core
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [clojure.repl :as repl]))
+
+
+(def routes-atom (atom nil))
+(def middleware-atom (atom nil))
 
 
 (defn verb? [value]
@@ -11,8 +16,7 @@
   (and (vector? val)
        (verb? (first val))
        (string? (second val))
-       (or (fn? (nth val 2))
-           (keyword? (nth val 2)))))
+       (fn? (nth val 2))))
 
 
 (defn qualify-ident [k]
@@ -34,26 +38,6 @@
   (when (and (string? s)
              (or (nil? m) (map? m)))
     (string/replace s #":([\w-_]+)" #(replacement % m))))
-
-
-(defn symbolize [k]
-  (if (keyword? k)
-    (symbol (namespace k) (name k))
-    k))
-
-
-(defn resolve-safely [sym]
-  (when (symbol? sym)
-    (resolve sym)))
-
-
-(defn resolve-route [val]
-  (cond
-    (keyword? val) (-> (symbolize val)
-                       (resolve-safely))
-    (symbol? val) (resolve-safely val)
-    (fn? val) val
-    :else nil))
 
 
 (defn params [s]
@@ -119,15 +103,16 @@
 
 
 (defn middleware [& args]
-  (let [fns (filter fn? args)
-        vectors (->> (filter vector? args)
-                     (flatten-wrapped-routes))]
-    (mapv #(vec (concat % fns)) vectors)))
-
-
-(defn middleware-fn [route]
-  (->> (drop 3 route)
-       (apply comp)))
+  (let [routes (filter #(not (fn? %)) args)
+        fns (filter fn? args)
+        f (apply comp fns)
+        flattened-routes (flatten-wrapped-routes routes)
+        routes-with-middleware (->> (mapv drop-last flattened-routes)
+                                    (mapv vec)
+                                    (mapv #(vector % f))
+                                    (into {}))]
+    (swap! middleware-atom (partial merge-with comp) routes-with-middleware)
+    flattened-routes))
 
 
 (defn app
@@ -136,19 +121,44 @@
   (fn [request]
     (let [{:keys [uri params]} request
           route (route request routes)
-          [_ route-uri route-keyword] route
-          route-handler (resolve-route route-keyword)
+          [route-method route-uri handler] route
+          middleware (get @middleware-atom [route-method route-uri])
+          handler (if (fn? middleware)
+                    (middleware handler)
+                    handler)
           route-params (route-params uri route-uri)
-          route-middleware (middleware-fn route)
-          request (assoc request :params (merge params route-params)
-                                 :route route-keyword)
-          handler (route-middleware route-handler)]
+          request (assoc request :params (merge params route-params))]
       (when (some? handler)
         (handler request)))))
 
 
-(defn routes [& routes]
-  (flatten-wrapped-routes routes))
+(defn apps
+  "Runs multiple router handlers until one of them matches a route"
+  [& handlers]
+  (fn [request]
+    (some #(% request) handlers)))
+
+
+(defn concat-route [a b]
+  (distinct (concat a b)))
+
+
+(defn keywordize [f]
+  (-> f str repl/demunge (string/split #"@") first keyword))
+
+
+(defn route-name [route]
+  (or (get route 3)
+   (keywordize (get route 2))))
+
+
+(defn routes [& args]
+  (let [flat-routes (flatten-wrapped-routes args)
+        route-map (->> flat-routes
+                       (mapv #(vector (route-name %) %))
+                       (into {}))]
+    (swap! routes-atom merge route-map)
+    flat-routes))
 
 
 (defn url-encode [s]
@@ -167,11 +177,10 @@
 
 
 (defn url-for
-  ([routes route-keyword]
-   (url-for routes route-keyword {}))
-  ([routes route-keyword params]
-   (let [route (-> (filter #(= (nth % 2) route-keyword) routes)
-                   (first))
+  ([route-keyword]
+   (url-for route-keyword {}))
+  ([route-keyword params]
+   (let [route (get @routes-atom route-keyword)
          url (route-str (nth route 1) params)
          route-params (route-params url (nth route 1))
          query-params (-> (apply dissoc params (keys route-params))
@@ -182,25 +191,22 @@
 
 
 (defn action-for
-  ([routes route-keyword]
-   (action-for routes route-keyword {}))
-  ([routes route-keyword params]
-   (let [[method route-url] (-> (filter #(= (nth % 2) route-keyword) routes)
-                                (first))
+  ([route-keyword]
+   (action-for route-keyword {}))
+  ([route-keyword params]
+   (let [[method route-url] (get @routes-atom route-keyword)
          action (route-str route-url params)
          _method method
-         method (if (not= :get method)
-                  :post
-                  :get)]
+         method (if (not= :get method) :post :get)]
      {:method method
       :_method _method
       :action action})))
 
 
-(defn redirect-to [routes & args]
+(defn redirect-to [& args]
   {:status 302
    :body ""
-   :headers {"Location" (apply (partial url-for routes) args)}})
+   :headers {"Location" (apply url-for args)}})
 
 
 (defn prefix-route [s route]
