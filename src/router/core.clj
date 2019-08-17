@@ -182,9 +182,7 @@
   ([route-keyword params]
    (let [route (get @routes-atom route-keyword)
          url (route-str (nth route 1) params)
-         route-params (route-params url (nth route 1))
-         query-params (-> (apply dissoc params (keys route-params))
-                          (dissoc :#))
+         query-params (get params :?)
          anchor (get params :#)
          anchor (if (some? anchor) (str "#" anchor) "")]
      (str url (query-string query-params) anchor))))
