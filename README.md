@@ -116,9 +116,9 @@ You can also prefix a set of routes like so
 The `url-for` helper takes a route name and returns the string for that route
 
 ```clojure
-(router/url-for ::index) ; => "/"
-(router/url-for ::hello) ; => "/hello"
-(router/url-for :account/show {:id 1}) ;=> "/accounts/1"
+(router/url-for :index) ; => "/"
+(router/url-for :hello) ; => "/hello"
+(router/url-for :account {:id 1}) ;=> "/accounts/1"
 ```
 
 You can also add query string parameters AND anchor tags
