@@ -19,7 +19,8 @@
         <directory>src</directory>
       </resource>
     </resources>
-  </build>  <repositories>
+  </build>
+  <repositories>
     <repository>
       <id>clojars</id>
       <url>https://clojars.org/repo</url>
