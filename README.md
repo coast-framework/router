@@ -3,11 +3,10 @@ Easy clojure routing
 
 ## Installation
 
-Add this lib to your `deps.edn`
+Add this to your `deps.edn`
 
 ```clojure
-{:deps {coast-framework/router {:git/url "https://github.com/coast-framework/router"
-                                :sha "8ee0d55ed2240a0bfe2efe854cfdaedb6eb6e6bb"}}}
+coast-framework/router {:mvn/version "1.0.1"}
 ```
 
 ## Usage
@@ -117,9 +116,15 @@ You can also prefix a set of routes like so
 The `url-for` helper takes a route name and returns the string for that route
 
 ```clojure
-(router/url-for :index) ; => "/"
-(router/url-for :hello) ; => "/hello"
+(router/url-for ::index) ; => "/"
+(router/url-for ::hello) ; => "/hello"
 (router/url-for :account/show {:id 1}) ;=> "/accounts/1"
+```
+
+You can also add query string parameters AND anchor tags
+
+```clojure
+(router/url-for :account/show {:id 1 :? {:sort "asc"} :# "anchor"}) ; => "/accounts/1?sort=asc#anchor"
 ```
 
 The `action-for` helper takes a route name and optional args and returns a map for forms.
